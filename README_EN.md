@@ -22,14 +22,7 @@ Verify against the `SHA256SUMS` file included in the Release; re-download if it 
 sha256sum fnwb.workbuddy_1.2.4_x86.fpk
 ```
 
-The App Center shows `v1.2`; inside the app the full version `v1.2.4` is displayed.
-
-## What's new in 1.2.4 (vs 1.2.2)
-
-- **You can install directly over any older version (1.2.0 / 1.2.2 / 1.2.3) — no uninstall needed.** The installer records its own version; on upgrade, if only the installer changed (WorkBuddy itself is unchanged), it still auto-refreshes the start script.
-- Start script fix: removed the `CODEBUDDY_BASE_URL` mistakenly injected in 1.2.3 (that variable is the model/API endpoint — pointing it at a LAN address would break model calls), restoring clean default config.
-- Also includes the 1.2.3 fixes: memory auto-tuning and OOM prevention on low-memory devices.
-- **Note**: web login uses Tencent SSO scan-to-login and **needs no public IP / tunnel**. If the QR keeps spinning after scanning, first check the NAS can reach `copilot.tencent.com` and `tencent.sso.copilot.tencent.com` (it only fails when outbound is restricted).
+The App Center shows `v1.2`; inside the app the full version `v1.2.4` is displayed. Release notes for each version are in the [GitHub Releases](https://github.com/mclhm8182/workbuddy-fnOS-installer/releases/latest) description.
 
 ## Quick start
 

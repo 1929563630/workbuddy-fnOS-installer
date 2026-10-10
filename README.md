@@ -22,14 +22,7 @@
 sha256sum fnwb.workbuddy_1.2.4_x86.fpk
 ```
 
-应用详情显示 `v1.2`，应用内显示完整版本 `v1.2.4`。
-
-## 更新说明（1.2.4，相对 1.2.2）
-
-- **可直接覆盖安装旧版本（1.2.0 / 1.2.2 / 1.2.3），无需卸载。** 安装器会记录自身版本，升级时若仅安装器版本变化、WorkBuddy 本体未变，也会自动刷新启动脚本。
-- 修复启动脚本：移除 1.2.3 误注入的 `CODEBUDDY_BASE_URL`（该变量是模型与 API 地址，设成局域网地址会让模型调用失效），恢复为干净默认配置。
-- 一并包含 1.2.3 的内存自适应、小内存机型防 OOM 修复。
-- **注意事项**：网页登录走腾讯 SSO 扫码，**不需要公网 IP / 隧道**；若扫码后一直转圈，先查 NAS 能否访问 `copilot.tencent.com` 与 `tencent.sso.copilot.tencent.com`（出网被限才会失败）。
+应用详情显示 `v1.2`，应用内显示完整版本 `v1.2.4`。各版本更新说明见 [GitHub Releases](https://github.com/mclhm8182/workbuddy-fnOS-installer/releases/latest) 附带的说明。
 
 ## 快速开始
 
