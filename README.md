@@ -13,16 +13,16 @@
 
 | 架构 | 安装包 |
 | --- | --- |
-| x86_64 | `fnwb.workbuddy_1.2.5_x86.fpk` |
-| ARM64 / aarch64 | `fnwb.workbuddy_1.2.5_arm.fpk` |
+| x86_64 | `fnwb.workbuddy_1.2.6_x86.fpk` |
+| ARM64 / aarch64 | `fnwb.workbuddy_1.2.6_arm.fpk` |
 
 对照 Release 的 `SHA256SUMS` 校验文件，不一致时重新下载：
 
 ```bash
-sha256sum fnwb.workbuddy_1.2.5_x86.fpk
+sha256sum fnwb.workbuddy_1.2.6_x86.fpk
 ```
 
-应用详情显示 `v1.2`，应用内显示完整版本 `v1.2.5`。各版本更新说明见 [GitHub Releases](https://github.com/mclhm8182/workbuddy-fnOS-installer/releases/latest) 附带的说明。
+应用详情显示 `v1.2`，应用内显示完整版本 `v1.2.6`。各版本更新说明见 [GitHub Releases](https://github.com/mclhm8182/workbuddy-fnOS-installer/releases/latest) 附带的说明。
 
 ## 快速开始
 
@@ -50,6 +50,39 @@ sudo sh -c 'cd /vol1/1000/app_workbuddy && setsid ./start.sh > run.log 2>&1 < /d
 
 **登录与历史**：打开后点击登录，用手机 App 扫码绑定 CodeBuddy 账号即可。绑定后对话历史随账号持久化，**跨窗口 / 设备不丢失**。该登录不依赖公网回跳，NAS 能出网即可完成。
 
+### 反向代理
+
+网关是普通 HTTP 服务，但页面会建立 **WebSocket / SSE** 长连接。反代时要放行
+`Upgrade` / `Connection` 头并关闭响应缓冲，否则界面会一直转圈或白屏。
+
+**挂在域名根路径**（`https://wb.example.com/` → `http://192.168.2.24:8090/`）：
+
+```nginx
+location / {
+    proxy_pass http://192.168.2.24:8090;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_buffering off;
+    proxy_read_timeout 3600s;
+}
+```
+
+**挂在子路径**（`https://nas.example.com/wb/` → 8090）：除了上面的头，还要告诉应用
+自己的前缀，否则页面里的 `/assets/...` 会 404（同样表现为白屏）：
+
+```bash
+sudo sh -c 'echo /wb > /vol1/1000/app_workbuddy/BASE_PATH'
+# 然后在应用中心停止再启动 WorkBuddy
+```
+
+`start.sh` 会把 `BASE_PATH` 转成 `CODEBUDDY_GATEWAY_BASE_PATH` 传给网关（1.2.6 起）。
+删掉该文件即恢复根路径模式。
+
 ## 卸载
 
 在应用中心直接卸载即可 —— 默认保留程序数据（`/vol1/1000/app_workbuddy`），便于重新启用。彻底清理（不可逆）：
@@ -69,6 +102,11 @@ sudo tail -40 /var/log/apps/fnwb.workbuddy.log     # 应用日志
 sudo tail -40 /vol1/1000/app_workbuddy/run.log     # 服务运行日志
 ```
 
+> **1.2.6 已修复“打开只有接口说明页 / 白屏”**：WorkBuddy 5.6 的 deb 只带网关 API，
+> 不再随包网页界面（`cli/dist/web-ui`），所以 8090 根路径只返回 “Web UI is not built”。
+> 1.2.6 起安装时会从官方 npm 包 `@tencent-ai/codebuddy-code` 取同版本 `dist/web-ui` 并注入，
+> 打开即是完整界面；之前装过的重新安装一次即可补上。
+
 > **1.2.5 已修复“装完打不开 / 白屏”**：WorkBuddy 5.6 起的官方 deb 不再随包完整 CLI bundle
 > （`dist/codebuddy.js`），旧版安装器的 `--serve` 会因 `Cannot find module '../dist/codebuddy'`
 > 直接退出，表现为 8090 不监听、桌面白屏。升级到 1.2.5 即可，无需改配置。
@@ -83,7 +121,7 @@ sudo tail -40 /vol1/1000/app_workbuddy/run.log     # 服务运行日志
 
 | | x86_64 | aarch64 |
 | --- | --- | --- |
-| 安装包 | `fnwb.workbuddy_1.2.5_x86.fpk` | `fnwb.workbuddy_1.2.5_arm.fpk` |
+| 安装包 | `fnwb.workbuddy_1.2.6_x86.fpk` | `fnwb.workbuddy_1.2.6_arm.fpk` |
 | NAS 机型 | 多数 Intel / AMD 飞牛 | 飞牛 OEC 等 ARM 机型 |
 | 解包后占用 | 约 950 MB | 约 2.7 GB |
 
@@ -111,7 +149,7 @@ cd workbuddy-fnOS-installer
 ./build.sh
 ```
 
-产物在 `dist/`：`fnwb.workbuddy_1.2.5_x86.fpk`、`fnwb.workbuddy_1.2.5_arm.fpk`、`SHA256SUMS`。`build.sh` 自动从 fnOS 官方 CDN 获取 fnpack 1.2.3。
+产物在 `dist/`：`fnwb.workbuddy_1.2.6_x86.fpk`、`fnwb.workbuddy_1.2.6_arm.fpk`、`SHA256SUMS`。`build.sh` 自动从 fnOS 官方 CDN 获取 fnpack 1.2.3。
 
 ## 合规与许可
 

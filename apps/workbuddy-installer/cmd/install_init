@@ -30,7 +30,7 @@ read_trimmed() {
 
 # 安装器（fpk）自身版本：由 build.sh 用 APP_VERSION 注入此字面量。
 # 用于判断“仅升级了安装器、WorkBuddy 本体版本未变”时是否仍需刷新启动脚本。
-INSTALLER_VERSION="1.2.5"
+INSTALLER_VERSION="1.2.6"
 
 # 支持通过环境变量预设：
 #   DEB_URL         指定下载地址（跳过官方接口查询）
@@ -224,6 +224,8 @@ _write_fallback_scripts() {
         return 1
     fi
 
+    APP_BUNDLE_DIR="$_appdir"
+
     # Node 运行时目录（若存在则使用）
     _nodedir="$_appdir/resources/runtime/node/bin"
 
@@ -253,6 +255,7 @@ NODE_BIN="$_nodedir/node"
 CLI_UNPACKED="$_appdir/resources/app.asar.unpacked/cli/bin/codebuddy"
 ASAR_FILE="$_appdir/resources/app.asar"
 ELECTRON_BIN="$_appdir/workbuddy"
+WEBUI_DIR="$_appdir/resources/app.asar.unpacked/cli/dist/web-ui"
 
 # 数据与临时目录就地放置，避免污染系统目录
 export HOME="\$BASE/home"
@@ -298,6 +301,22 @@ if [ "\$AUTH_MODE" = "password" ]; then
     export CODEBUDDY_GATEWAY_PASSWORD="\$(cat "\$ACCESS_PASS_FILE")"
 else
     export CODEBUDDY_GATEWAY_AUTH=none
+fi
+
+# ---------------------------------------------------------------------
+# 反向代理子路径（可选）
+#
+# 通过 https://nas.example.com/wb/ 这类子路径访问时，把前缀写进 BASE_PATH：
+#     echo /wb > \$BASE/BASE_PATH
+# 不设置的话，页面里的 /assets/... 会 404（表现为白屏）。
+# 根路径反代（https://wb.example.com/）不需要设置。
+# ---------------------------------------------------------------------
+if [ -s "\$BASE/BASE_PATH" ]; then
+    BASE_PATH="\$(tr -d '[:space:]' <"\$BASE/BASE_PATH")"
+    if [ -n "\$BASE_PATH" ]; then
+        export CODEBUDDY_GATEWAY_BASE_PATH="\$BASE_PATH"
+        echo "WorkBuddy: 使用子路径 \$BASE_PATH"
+    fi
 fi
 
 # ---------------------------------------------------------------------
@@ -353,6 +372,14 @@ echo "WorkBuddy: 机器内存 \${_total}MB，V8 堆上限 \${HEAP_MB}MB"
 # ---------------------------------------------------------------------
 export CODEBUDDY_FORCE_HEADLESS_BUNDLE=1
 
+# Web UI：5.6+ 的 deb 不带 cli/dist/web-ui，需要安装器另外补齐。
+# 没有它，网关根路径只返回 “Web UI is not built” 的接口说明页（表现为白屏）。
+if [ -f "\$WEBUI_DIR/index.html" ]; then
+    export CODEBUDDY_WEB_UI_ROOT="\$WEBUI_DIR"
+else
+    echo "WorkBuddy: 未找到 Web UI（\$WEBUI_DIR），打开 8090 只会看到 API 说明页"
+fi
+
 if [ -x "\$NODE_BIN" ] && [ -f "\$CLI_UNPACKED" ]; then
     exec "\$NODE_BIN" "\$CLI_UNPACKED" --serve --host 0.0.0.0 --port ${APP_PORT}
 fi
@@ -388,6 +415,86 @@ EOS
     log "已生成启动脚本：$_dir/start.sh"
     hint "CLI 入口：$_appdir"
     return 0
+}
+
+# ---------------------------------------------------------------- 补齐 Web UI
+#
+# WorkBuddy 5.6 的 deb 只带网关 API，不再随包网页界面（cli/dist/web-ui）。
+# 官方把这份前端单独发在 npm 包 @tencent-ai/codebuddy-code 的 dist/web-ui 里，
+# 这里按内置 CLI 的实际版本号取同版本，解压到 cli/dist/web-ui，
+# start.sh 再用 CODEBUDDY_WEB_UI_ROOT 指过去。
+#
+# 取不到也不阻断安装：网关照样能起，只是根路径显示 API 说明页。
+_ensure_web_ui() {
+    _appdir="${APP_BUNDLE_DIR:-}"
+    if [ -z "$_appdir" ]; then
+        _found=$(find "$APP_DATA" -type f -path '*cli/bin/codebuddy' 2>/dev/null | head -1)
+        [ -n "$_found" ] && _appdir="${_found%/resources/app.asar.unpacked/cli/bin/codebuddy}"
+    fi
+    if [ -z "$_appdir" ]; then
+        warn "未定位到 WorkBuddy，跳过 Web UI 检查"
+        return 1
+    fi
+
+    _cli_dir="$_appdir/resources/app.asar.unpacked/cli"
+    _ui="$_cli_dir/dist/web-ui"
+    if [ -f "$_ui/index.html" ]; then
+        info "Web UI 已存在：$_ui"
+        return 0
+    fi
+
+    _node="$_appdir/resources/runtime/node/bin/node"
+    _cli="$_cli_dir/bin/codebuddy"
+    if [ ! -x "$_node" ] || [ ! -f "$_cli" ]; then
+        warn "缺少内置 Node 或 CLI 入口，无法补齐 Web UI"
+        return 1
+    fi
+
+    mkdir -p "$APP_DATA/home" "$APP_DATA/tmp"
+    _ver=$(HOME="$APP_DATA/home" TMPDIR="$APP_DATA/tmp" CODEBUDDY_FORCE_HEADLESS_BUNDLE=1 \
+        timeout 30 "$_node" "$_cli" --version 2>/dev/null | head -1 | tr -d '\r[:space:]')
+    case "$_ver" in
+        [0-9]*.[0-9]*.[0-9]*) ;;
+        *)
+            warn "无法识别 CLI 版本（'$_ver'），跳过 Web UI 补齐"
+            return 1
+            ;;
+    esac
+
+    step "下载 Web UI（CLI ${_ver}）"
+    _tgz="$APP_DATA/.webui-${_ver}.tgz"
+    rm -f "$_tgz"
+    _got=0
+    for _base in https://registry.npmmirror.com https://registry.npmjs.org; do
+        _url="$_base/@tencent-ai/codebuddy-code/-/codebuddy-code-${_ver}.tgz"
+        log "GET $_url"
+        info "从 ${_base#https://} 下载…"
+        if curl -fsSL --connect-timeout 10 --max-time 300 -o "$_tgz" "$_url"; then
+            _got=1
+            break
+        fi
+        warn "该源下载失败，换下一个"
+    done
+    if [ "$_got" != "1" ]; then
+        rm -f "$_tgz"
+        warn "Web UI 下载失败，网关仍可使用，但网页界面缺失"
+        return 1
+    fi
+
+    mkdir -p "$_cli_dir/dist"
+    if ! tar -xzf "$_tgz" -C "$_cli_dir/dist" --strip-components=2 package/dist/web-ui; then
+        rm -f "$_tgz"
+        warn "Web UI 解压失败"
+        return 1
+    fi
+    rm -f "$_tgz"
+
+    if [ -f "$_ui/index.html" ]; then
+        ok "Web UI 已补齐：$(du -sh "$_ui" 2>/dev/null | cut -f1)"
+        return 0
+    fi
+    warn "Web UI 解压后仍未找到 index.html"
+    return 1
 }
 
 # 确保认证相关文件存在
@@ -673,6 +780,15 @@ if [ "${NEED_REFRESH_STARTSH:-0}" = "1" ]; then
     else
         warn "启动脚本刷新失败，将沿用现有脚本"
     fi
+fi
+
+# ---------------------------------------------------------------- 补齐 Web UI
+#
+# 5.6+ 的 deb 不带网页界面，缺了它 8090 只显示 “Web UI is not built”，
+# 桌面图标 / 反代打开都是白屏。已装好的老版本也要补，所以放在刷新之后。
+if [ -f "$APP_DATA/start.sh" ]; then
+    step "检查 Web UI"
+    _ensure_web_ui || warn "Web UI 未补齐：打开 8090 只会看到接口说明页"
 fi
 
 # ---------------------------------------------------------------- 记录安装器版本

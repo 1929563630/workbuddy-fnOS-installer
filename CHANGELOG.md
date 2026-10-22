@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.2.6 — 2026-10-22
+
+修复「服务起来了，但打开只看到接口说明页 / 白屏」。
+
+### 根因
+- 1.2.5 解决的是「8090 不监听」；装上后端口确实通了，但 WorkBuddy 5.6 的 deb
+  **只随包网关 API，不随包网页界面**：`cli/dist/` 下没有 `web-ui/`。
+- 网关找不到 `web-ui/index.html` 时，根路径退化成一张接口说明页：
+  `CodeBuddy Gateway / Web UI is not built. Use the API endpoints directly...`。
+  桌面 iframe、反代域名打开都是这一页（纯文本 / 白屏），看起来就像“还是坏的”。
+- 官方把这份前端单独发在 npm 包 `@tencent-ai/codebuddy-code` 的 `dist/web-ui/` 里，
+  deb 为了体积把它裁掉了。
+
+### 修复
+- 安装时按内置 CLI 的**实际版本号**（`codebuddy --version`，如 `2.147.0`），
+  从官方 npm 包取同版本 `dist/web-ui`，解压到
+  `resources/app.asar.unpacked/cli/dist/web-ui/`。
+- `start.sh` 导出 `CODEBUDDY_WEB_UI_ROOT` 指向该目录，网关即按完整界面提供服务。
+- 下载源依次尝试 `registry.npmmirror.com`、`registry.npmjs.org`；都失败只告警，
+  不影响网关启动（仍可用 API）。已装好的旧版本重装一次即可补上。
+- 新增 `BASE_PATH`（如 `echo /wb > .../BASE_PATH`）用于子路径反代：
+  `start.sh` 会转成 `CODEBUDDY_GATEWAY_BASE_PATH`，页面资源自动带上前缀；
+  根路径反代无需设置。
+
 ## 1.2.5 — 2026-10-22
 
 修复「装完后点桌面图标打不开（白屏 / 一直转圈）」。

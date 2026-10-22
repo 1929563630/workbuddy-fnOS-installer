@@ -13,16 +13,16 @@ Download the package for your architecture from [GitHub Releases](https://github
 
 | Architecture | Package |
 | --- | --- |
-| x86_64 | `fnwb.workbuddy_1.2.5_x86.fpk` |
-| ARM64 / aarch64 | `fnwb.workbuddy_1.2.5_arm.fpk` |
+| x86_64 | `fnwb.workbuddy_1.2.6_x86.fpk` |
+| ARM64 / aarch64 | `fnwb.workbuddy_1.2.6_arm.fpk` |
 
 Verify against the `SHA256SUMS` file included in the Release; re-download if it doesn't match:
 
 ```bash
-sha256sum fnwb.workbuddy_1.2.5_x86.fpk
+sha256sum fnwb.workbuddy_1.2.6_x86.fpk
 ```
 
-The App Center shows `v1.2`; inside the app the full version `v1.2.5` is displayed. Release notes for each version are in the [GitHub Releases](https://github.com/mclhm8182/workbuddy-fnOS-installer/releases/latest) description.
+The App Center shows `v1.2`; inside the app the full version `v1.2.6` is displayed. Release notes for each version are in the [GitHub Releases](https://github.com/mclhm8182/workbuddy-fnOS-installer/releases/latest) description.
 
 ## Quick start
 
@@ -50,6 +50,40 @@ sudo sh -c 'cd /vol1/1000/app_workbuddy && setsid ./start.sh > run.log 2>&1 < /d
 
 **Login & history**: open the app, click login, and scan the QR with the mobile App to bind your CodeBuddy account. After binding, chat history persists with your account and **is not lost across windows / devices**. This login does not depend on a public-IP callback — it completes as long as the NAS has outbound access.
 
+### Reverse proxy
+
+The gateway is plain HTTP, but the page keeps **WebSocket / SSE** connections open. The proxy
+must forward the `Upgrade` / `Connection` headers and disable buffering, otherwise the UI spins
+forever or stays blank.
+
+**Mounted at the domain root** (`https://wb.example.com/` → `http://192.168.2.24:8090/`):
+
+```nginx
+location / {
+    proxy_pass http://192.168.2.24:8090;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_buffering off;
+    proxy_read_timeout 3600s;
+}
+```
+
+**Mounted under a subpath** (`https://nas.example.com/wb/` → 8090): also tell the app its
+prefix, or the `/assets/...` URLs will 404 (blank page again):
+
+```bash
+sudo sh -c 'echo /wb > /vol1/1000/app_workbuddy/BASE_PATH'
+# then stop and start WorkBuddy in the App Center
+```
+
+`start.sh` turns `BASE_PATH` into `CODEBUDDY_GATEWAY_BASE_PATH` (1.2.6+). Delete the file to go
+back to root-path mode.
+
 ## Uninstall
 
 Just uninstall from the App Center — by default the program data (`/vol1/1000/app_workbuddy`) is **kept** for easy re-enable. For a full cleanup (irreversible):
@@ -69,6 +103,12 @@ sudo tail -40 /var/log/apps/fnwb.workbuddy.log     # app log
 sudo tail -40 /vol1/1000/app_workbuddy/run.log     # service runtime log
 ```
 
+> **Fixed in 1.2.6 — "API-only page / blank screen":** the WorkBuddy 5.6 deb ships the gateway API
+> but no longer ships the web UI (`cli/dist/web-ui`), so the root path only returned
+> "Web UI is not built". Since 1.2.6 the installer downloads the matching `dist/web-ui` from the
+> official `@tencent-ai/codebuddy-code` npm package and injects it, so the full UI loads again.
+> Already installed? Just reinstall once to pick it up.
+
 > **Fixed in 1.2.5 — "installs but won't open / blank page":** since WorkBuddy 5.6 the official deb
 > no longer ships the full CLI bundle (`dist/codebuddy.js`), so the old installer's bare `--serve`
 > exited with `Cannot find module '../dist/codebuddy'`, leaving port 8090 unbound. Upgrade to 1.2.5;
@@ -84,7 +124,7 @@ sudo tail -40 /vol1/1000/app_workbuddy/run.log     # service runtime log
 
 | | x86_64 | aarch64 |
 | --- | --- | --- |
-| Package | `fnwb.workbuddy_1.2.5_x86.fpk` | `fnwb.workbuddy_1.2.5_arm.fpk` |
+| Package | `fnwb.workbuddy_1.2.6_x86.fpk` | `fnwb.workbuddy_1.2.6_arm.fpk` |
 | NAS models | Most Intel / AMD fnOS devices | ARM models such as fnOS OEC |
 | Unpacked size | ~950 MB | ~2.7 GB |
 
@@ -112,7 +152,7 @@ cd workbuddy-fnOS-installer
 ./build.sh
 ```
 
-Artifacts land in `dist/`: `fnwb.workbuddy_1.2.5_x86.fpk`, `fnwb.workbuddy_1.2.5_arm.fpk`, `SHA256SUMS`. `build.sh` automatically fetches fnpack 1.2.3 from fnOS's official CDN.
+Artifacts land in `dist/`: `fnwb.workbuddy_1.2.6_x86.fpk`, `fnwb.workbuddy_1.2.6_arm.fpk`, `SHA256SUMS`. `build.sh` automatically fetches fnpack 1.2.3 from fnOS's official CDN.
 
 ## Compliance & license
 

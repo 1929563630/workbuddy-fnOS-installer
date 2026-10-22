@@ -1,5 +1,5 @@
 appname = fnwb.workbuddy
-version = 1.2.5
+version = 1.2.6
 display_name = WorkBuddy
 desc = WorkBuddy 的第三方安装器。安装时从官方地址获取官方 .deb 并解包为 fnOS 应用，不包含 WorkBuddy 任何二进制。本工具与 WorkBuddy 官方无隶属关系。
 platform = x86
@@ -15,4 +15,4 @@ desktop_uidir = ui
 desktop_applaunchname = fnwb.workbuddy.main
 install_type = root
 ctl_stop = true
-changelog = 修复装完打不开（8090 不监听）：WorkBuddy 5.6 起的官方 deb 不再随包完整 CLI bundle（dist/codebuddy.js），仅剩 codebuddy-headless.js / codebuddy-lite-wb.mjs，而 start.sh 只传 --serve 会让 launcher 去找缺失的完整包并报 Cannot find module '../dist/codebuddy' 后退出；现按官方宿主做法导出 CODEBUDDY_FORCE_HEADLESS_BUNDLE=1，并增加 Electron-as-Node 兜底。同时修复：卸载后重装被“目标目录已存在且非空”挡住；1.2.4 的 start.sh 刷新逻辑因函数定义在 else 分支内而永远 command not found；桌面入口在全新安装时误报警告；收尾不再引用从未生成的 .gateway_pass
+changelog = 修复打开只有接口说明页/白屏：WorkBuddy 5.6 的 deb 只带网关 API，不再随包网页界面（cli/dist/web-ui），网关根路径因此只返回 “Web UI is not built” 的接口说明页。1.2.6 起安装时按内置 CLI 的实际版本号，从官方 npm 包 @tencent-ai/codebuddy-code 取同版本 dist/web-ui 注入，并用 CODEBUDDY_WEB_UI_ROOT 指过去，打开即是完整界面；下载失败仅告警，不影响网关启动。同时包含 1.2.5 的全部修复：CODEBUDDY_FORCE_HEADLESS_BUNDLE=1 解决 5.6 无完整 CLI bundle 导致的 8090 不监听；卸载后重装不再被“目标目录已存在且非空”挡住；启动脚本刷新逻辑与桌面入口误报。
