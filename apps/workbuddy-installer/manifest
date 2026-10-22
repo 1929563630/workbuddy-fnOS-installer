@@ -1,5 +1,5 @@
 appname = fnwb.workbuddy
-version = 1.2.4
+version = 1.2.5
 display_name = WorkBuddy
 desc = WorkBuddy 的第三方安装器。安装时从官方地址获取官方 .deb 并解包为 fnOS 应用，不包含 WorkBuddy 任何二进制。本工具与 WorkBuddy 官方无隶属关系。
 platform = x86
@@ -15,4 +15,4 @@ desktop_uidir = ui
 desktop_applaunchname = fnwb.workbuddy.main
 install_type = root
 ctl_stop = true
-changelog = 修复 start.sh 内存检测：打包期变量被错误展开，导致生成脚本里总内存为空、V8 堆上限恒为 1536MB 且启动报 integer expression expected；改为多来源探测（/proc/meminfo→free -m→vmstat -s）并强制正整数兜底，OEC 2GB 机型现在真正按 768MB 限制堆；deb 落存储池而非 /tmp；空间检查跟随实际安装卷
+changelog = 修复装完打不开（8090 不监听）：WorkBuddy 5.6 起的官方 deb 不再随包完整 CLI bundle（dist/codebuddy.js），仅剩 codebuddy-headless.js / codebuddy-lite-wb.mjs，而 start.sh 只传 --serve 会让 launcher 去找缺失的完整包并报 Cannot find module '../dist/codebuddy' 后退出；现按官方宿主做法导出 CODEBUDDY_FORCE_HEADLESS_BUNDLE=1，并增加 Electron-as-Node 兜底。同时修复：卸载后重装被“目标目录已存在且非空”挡住；1.2.4 的 start.sh 刷新逻辑因函数定义在 else 分支内而永远 command not found；桌面入口在全新安装时误报警告；收尾不再引用从未生成的 .gateway_pass

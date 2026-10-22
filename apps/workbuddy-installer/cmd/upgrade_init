@@ -1,10 +1,14 @@
 #!/bin/bash
-# cmd/upgrade_init — fnOS 生命周期钩子
+# cmd/upgrade_init — 升级前钩子
 # SPDX-License-Identifier: MIT
 #
-# 由 fnOS 应用中心在对应时机调用。
-# 本脚本无需实现额外逻辑，退出 0 表示成功。
+# fnOS 在“包升级”（而非全新安装）时会走 upgrade_* 而不是 install_*。
+# 早期版本这里直接 exit 0，导致“升级安装器”永远不刷新 NAS 上的 start.sh，
+# 启动方式的修复因此落不了地。
 #
-# 如需在特定时机做事（例如清理旧版本、迁移数据），在此添加。
+# install_init 本身是幂等的：是否下载 WorkBuddy 本体、是否需要刷新
+# start.sh、是否需要重启服务，它都会自行判断。故直接复用。
 
-exit 0
+CMD_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+exec "$CMD_DIR/install_init"

@@ -13,16 +13,16 @@
 
 | 架构 | 安装包 |
 | --- | --- |
-| x86_64 | `fnwb.workbuddy_1.2.4_x86.fpk` |
-| ARM64 / aarch64 | `fnwb.workbuddy_1.2.4_arm.fpk` |
+| x86_64 | `fnwb.workbuddy_1.2.5_x86.fpk` |
+| ARM64 / aarch64 | `fnwb.workbuddy_1.2.5_arm.fpk` |
 
 对照 Release 的 `SHA256SUMS` 校验文件，不一致时重新下载：
 
 ```bash
-sha256sum fnwb.workbuddy_1.2.4_x86.fpk
+sha256sum fnwb.workbuddy_1.2.5_x86.fpk
 ```
 
-应用详情显示 `v1.2`，应用内显示完整版本 `v1.2.4`。各版本更新说明见 [GitHub Releases](https://github.com/mclhm8182/workbuddy-fnOS-installer/releases/latest) 附带的说明。
+应用详情显示 `v1.2`，应用内显示完整版本 `v1.2.5`。各版本更新说明见 [GitHub Releases](https://github.com/mclhm8182/workbuddy-fnOS-installer/releases/latest) 附带的说明。
 
 ## 快速开始
 
@@ -69,17 +69,21 @@ sudo tail -40 /var/log/apps/fnwb.workbuddy.log     # 应用日志
 sudo tail -40 /vol1/1000/app_workbuddy/run.log     # 服务运行日志
 ```
 
+> **1.2.5 已修复“装完打不开 / 白屏”**：WorkBuddy 5.6 起的官方 deb 不再随包完整 CLI bundle
+> （`dist/codebuddy.js`），旧版安装器的 `--serve` 会因 `Cannot find module '../dist/codebuddy'`
+> 直接退出，表现为 8090 不监听、桌面白屏。升级到 1.2.5 即可，无需改配置。
+
 **“8090 端口被占用”**：停掉占用进程，或改 `cmd/lib/common.sh` 的 `APP_PORT` 与 `manifest` 的 `service_port`。
 
 **下载失败**：先在电脑下载官方 deb 拷到 NAS，再设 `DEB_FILE=/tmp/wb.deb` 后于应用中心重新安装（绕过官方接口查询）。
 
-**重启后服务没了**：fnOS 上服务靠 `setsid` 拉起而非 systemd unit，重启后重新执行上面的启动命令即可。
+**重启后服务没了**：服务由 fnOS 应用中心通过 `cmd/main start` 拉起，正常情况下开机自启；若未自启，在应用中心停止后再启动，或执行 `sudo /usr/local/apps/@appcenter/fnwb.workbuddy/cmd/main start`。
 
 ## 架构与体积
 
 | | x86_64 | aarch64 |
 | --- | --- | --- |
-| 安装包 | `fnwb.workbuddy_1.2.4_x86.fpk` | `fnwb.workbuddy_1.2.4_arm.fpk` |
+| 安装包 | `fnwb.workbuddy_1.2.5_x86.fpk` | `fnwb.workbuddy_1.2.5_arm.fpk` |
 | NAS 机型 | 多数 Intel / AMD 飞牛 | 飞牛 OEC 等 ARM 机型 |
 | 解包后占用 | 约 950 MB | 约 2.7 GB |
 
@@ -107,7 +111,7 @@ cd workbuddy-fnOS-installer
 ./build.sh
 ```
 
-产物在 `dist/`：`fnwb.workbuddy_1.2.4_x86.fpk`、`fnwb.workbuddy_1.2.4_arm.fpk`、`SHA256SUMS`。`build.sh` 自动从 fnOS 官方 CDN 获取 fnpack 1.2.3。
+产物在 `dist/`：`fnwb.workbuddy_1.2.5_x86.fpk`、`fnwb.workbuddy_1.2.5_arm.fpk`、`SHA256SUMS`。`build.sh` 自动从 fnOS 官方 CDN 获取 fnpack 1.2.3。
 
 ## 合规与许可
 

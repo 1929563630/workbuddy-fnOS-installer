@@ -13,16 +13,16 @@ Download the package for your architecture from [GitHub Releases](https://github
 
 | Architecture | Package |
 | --- | --- |
-| x86_64 | `fnwb.workbuddy_1.2.4_x86.fpk` |
-| ARM64 / aarch64 | `fnwb.workbuddy_1.2.4_arm.fpk` |
+| x86_64 | `fnwb.workbuddy_1.2.5_x86.fpk` |
+| ARM64 / aarch64 | `fnwb.workbuddy_1.2.5_arm.fpk` |
 
 Verify against the `SHA256SUMS` file included in the Release; re-download if it doesn't match:
 
 ```bash
-sha256sum fnwb.workbuddy_1.2.4_x86.fpk
+sha256sum fnwb.workbuddy_1.2.5_x86.fpk
 ```
 
-The App Center shows `v1.2`; inside the app the full version `v1.2.4` is displayed. Release notes for each version are in the [GitHub Releases](https://github.com/mclhm8182/workbuddy-fnOS-installer/releases/latest) description.
+The App Center shows `v1.2`; inside the app the full version `v1.2.5` is displayed. Release notes for each version are in the [GitHub Releases](https://github.com/mclhm8182/workbuddy-fnOS-installer/releases/latest) description.
 
 ## Quick start
 
@@ -69,17 +69,22 @@ sudo tail -40 /var/log/apps/fnwb.workbuddy.log     # app log
 sudo tail -40 /vol1/1000/app_workbuddy/run.log     # service runtime log
 ```
 
+> **Fixed in 1.2.5 — "installs but won't open / blank page":** since WorkBuddy 5.6 the official deb
+> no longer ships the full CLI bundle (`dist/codebuddy.js`), so the old installer's bare `--serve`
+> exited with `Cannot find module '../dist/codebuddy'`, leaving port 8090 unbound. Upgrade to 1.2.5;
+> no config change needed.
+
 **"Port 8090 already in use"**: stop the occupying process, or change `APP_PORT` in `cmd/lib/common.sh` and `service_port` in `manifest`.
 
 **Download failed**: download the official deb on your computer, copy it to the NAS, set `DEB_FILE=/tmp/wb.deb`, then reinstall from the App Center (bypasses the official endpoint query).
 
-**Service gone after reboot**: on fnOS the service is started via `setsid` rather than a systemd unit; just re-run the start command above after a reboot.
+**Service gone after reboot**: fnOS starts the app through `cmd/main start` and normally auto-starts it on boot; if not, stop and start it in the App Center, or run `sudo /usr/local/apps/@appcenter/fnwb.workbuddy/cmd/main start`.
 
 ## Architecture & size
 
 | | x86_64 | aarch64 |
 | --- | --- | --- |
-| Package | `fnwb.workbuddy_1.2.4_x86.fpk` | `fnwb.workbuddy_1.2.4_arm.fpk` |
+| Package | `fnwb.workbuddy_1.2.5_x86.fpk` | `fnwb.workbuddy_1.2.5_arm.fpk` |
 | NAS models | Most Intel / AMD fnOS devices | ARM models such as fnOS OEC |
 | Unpacked size | ~950 MB | ~2.7 GB |
 
@@ -107,7 +112,7 @@ cd workbuddy-fnOS-installer
 ./build.sh
 ```
 
-Artifacts land in `dist/`: `fnwb.workbuddy_1.2.4_x86.fpk`, `fnwb.workbuddy_1.2.4_arm.fpk`, `SHA256SUMS`. `build.sh` automatically fetches fnpack 1.2.3 from fnOS's official CDN.
+Artifacts land in `dist/`: `fnwb.workbuddy_1.2.5_x86.fpk`, `fnwb.workbuddy_1.2.5_arm.fpk`, `SHA256SUMS`. `build.sh` automatically fetches fnpack 1.2.3 from fnOS's official CDN.
 
 ## Compliance & license
 

@@ -1,5 +1,47 @@
 # Changelog
 
+## 1.2.5 — 2026-10-22
+
+修复「装完后点桌面图标打不开（白屏 / 一直转圈）」。
+
+### 根因
+- WorkBuddy 5.6 的官方 Linux deb 不再随包完整的 CLI bundle：
+  `resources/app.asar.unpacked/cli/dist/` 里只剩 `codebuddy-headless.js` 与 `codebuddy-lite-wb.mjs`，
+  没有 `dist/codebuddy.js`。
+- `cli/bin/codebuddy` 只有在 `--print` / `--acp` / `--version`，或
+  `CODEBUDDY_FORCE_HEADLESS_BUNDLE=1` 等条件下才路由到 headless 包；
+  官方 WorkBuddy 宿主在 spawn 子进程前会设置该变量。
+- 1.2.4 的 `start.sh` 只传 `--serve`，launcher 于是 `require('../dist/codebuddy')`，
+  报 `Error: Cannot find module '../dist/codebuddy'` 后退出 → 8090 不监听 → 桌面 iframe 白屏。
+  实测 `run.log` 中连续三次都是这条错误。
+
+### 修复
+- `start.sh` 在启动网关前导出 `CODEBUDDY_FORCE_HEADLESS_BUNDLE=1`，与官方宿主一致；
+  旧版本 deb 若仍有完整 bundle，launcher 会自动从 headless 回退到 full，不受影响。
+- 增加兜底：内置 node 不可用、或 CLI 被收回 `app.asar` 内时，用
+  `ELECTRON_RUN_AS_NODE=1 workbuddy app.asar/cli/bin/codebuddy` 启动
+  （Electron 自带 asar 读取能力）。
+- 启动脚本里显式给出 CLI / Node / asar 路径，找不到入口时打印明确错误而不是静默退出。
+
+### 同时修复
+- **卸载后无法重装**：`install_init` 原先只要目标目录非空就中止，而卸载默认保留
+  `/vol1/1000/app_workbuddy`，等于“卸载过一次就再也装不上”。现按 `.workbuddy-managed`
+  等标记识别己方目录，原地重装并保留 `home/`（登录态）与 `AUTH_MODE` / `ACCESS_PASS`。
+- **升级不刷新启动脚本**：1.2.4 的刷新逻辑写在 `else` 分支内，走「已是最新版本」分支时
+  函数根本未定义（`command not found`）。现把函数定义移到主流程之前；`upgrade_init`
+  也改为直接复用 `install_init`（fnOS 升级走 `upgrade_*`，原先是空实现）。
+- 全新安装时不再误报「未找到桌面入口配置目录」——那时 fnOS 还没创建应用注册目录，
+  桌面入口本就由 fpk 内置的 `app/ui/config` 提供。
+- 收尾不再引用从未生成的 `.gateway_pass`：按 `AUTH_MODE` 正确显示密码 / 提示。
+- `build.sh` 修正 `curl --retry2` 拼写（官方 fnpack 自动下载此前必然失败）。
+
+### 验证
+- 在 fnOS 1.2.0900 / x86_64 上用官方 deb 5.6.2.40046327 实测：
+  安装 → 8090 监听 → `GET /` 返回 200（页面标题 `CodeBuddy Remote Control`）；
+  `cmd/main status` 返回 0，`stop` 后返回 3，`start` 后恢复 200；
+  `AUTH_MODE=password` 时自动生成密码，带 `?password=` 访问返回 302 并下发会话。
+- 覆盖场景：全新安装、卸载后重装、仅升级安装器（跳过本体下载、只刷新 `start.sh`）。
+
 ## 1.2.4 — 2026-10-10
 
 移除 1.2.3 误注入的 `CODEBUDDY_BASE_URL` 逻辑，纠正对登录机制的误解，并澄清「跨窗口历史丢失」的真实根因与解法。
